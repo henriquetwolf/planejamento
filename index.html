@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Planejador Estratégico - Estúdio de Pilates</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Custom styles for PDF rendering */
+        #pdf-content-wrapper {
+            background-color: white;
+            padding: 20px;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+        #pdf-content-wrapper h1 {
+            font-size: 24pt !important;
+            color: #004d40 !important; /* darker teal */
+            border-bottom: 2px solid #b2dfdb !important; /* lighter teal */
+            padding-bottom: 10px !important;
+            margin-top: 20px !important;
+            margin-bottom: 20px !important;
+        }
+        #pdf-content-wrapper h2 {
+            font-size: 18pt !important;
+            color: #00695c !important; /* mid teal */
+            margin-top: 15px !important;
+            margin-bottom: 15px !important;
+        }
+        #pdf-content-wrapper h3 {
+            font-size: 14pt !important;
+            color: #00796b !important; /* light teal */
+            margin-top: 10px !important;
+            margin-bottom: 10px !important;
+        }
+        #pdf-content-wrapper p {
+            font-size: 11pt !important;
+            margin-bottom: 12px !important;
+        }
+        #pdf-content-wrapper li {
+            font-size: 11pt !important;
+            margin-left: 20px !important;
+            list-style-type: disc !important;
+            margin-bottom: 8px !important;
+        }
+        #pdf-content-wrapper strong {
+            font-weight: bold !important;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
+    "jspdf": "https://aistudiocdn.com/jspdf@^2.5.1",
+    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1"
+  }
+}
+</script>
+</head>
+<body class="bg-gray-50">
+<div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
