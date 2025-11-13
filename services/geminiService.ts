@@ -3,15 +3,20 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { StrategicPlan, SWOT, Objective, QuarterlyAction, SavedPlan } from '../types';
 
 // --- Gemini AI Setup ---
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
+const GEMINI_API_KEY = process.env.API_KEY;
+
+if (!GEMINI_API_KEY) {
+    // Isso fornece um erro claro para os desenvolvedores se a variável de ambiente estiver faltando.
+    // É crucial para a implantação na Vercel e para o desenvolvimento local.
+    throw new Error("A variável de ambiente API_KEY não está definida. Por favor, adicione-a às configurações do seu projeto na Vercel ou a um arquivo .env local.");
 }
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 
 // --- Supabase Setup & Fallback to LocalStorage ---
-const supabaseUrl = 'https://wyijmkzkdkdwqcwdhxri.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5aWpta3prZGtkd3Fjd2RoeHJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMzA1NTcsImV4cCI6MjA3ODYwNjU1N30.UtAGGKNMI0c5y0IIgIBCPRmbnOvSsoBgK1oB-V7wOZ0';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
 const useSupabase = supabaseUrl && supabaseAnonKey;
 const supabase: SupabaseClient | null = useSupabase ? createClient(supabaseUrl, supabaseAnonKey) : null;
@@ -19,7 +24,7 @@ const supabase: SupabaseClient | null = useSupabase ? createClient(supabaseUrl, 
 if (useSupabase) {
     console.log("Using Supabase for data storage.");
 } else {
-    console.warn("Supabase environment variables not set. Falling back to localStorage. Your data will not be persisted across devices or sessions if you clear your browser data.");
+    console.warn("SUPABASE_URL and SUPABASE_ANON_KEY environment variables not set. Falling back to localStorage. Your data will not be persisted across devices or sessions if you clear your browser data.");
 }
 
 // --- Database Service Functions ---
