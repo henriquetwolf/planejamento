@@ -129,7 +129,7 @@ const SavedPlansList: React.FC<SavedPlansListProps> = ({ savedPlans, onLoad, onD
                                         {plan.planData.planningYear && ` (${plan.planData.planningYear})`}
                                     </p>
                                     <p className="text-sm text-gray-500">
-                                        Salvo em: {new Date(plan.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                        Salvo em: {new Date(plan.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                                     </p>
                                 </div>
                                 <div className="flex items-center space-x-2 flex-shrink-0">

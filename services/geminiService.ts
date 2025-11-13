@@ -1,13 +1,169 @@
-
-
 import { GoogleGenAI } from "@google/genai";
-import { StrategicPlan, SWOT, Objective, QuarterlyAction } from '../types';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { StrategicPlan, SWOT, Objective, QuarterlyAction, SavedPlan } from '../types';
 
+// --- Gemini AI Setup ---
 if (!process.env.API_KEY) {
     throw new Error("API_KEY environment variable not set");
 }
-
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+
+// --- Supabase Setup & Fallback to LocalStorage ---
+const supabaseUrl = 'https://wyijmkzkdkdwqcwdhxri.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5aWpta3prZGtkd3Fjd2RoeHJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMzA1NTcsImV4cCI6MjA3ODYwNjU1N30.UtAGGKNMI0c5y0IIgIBCPRmbnOvSsoBgK1oB-V7wOZ0';
+
+const useSupabase = supabaseUrl && supabaseAnonKey;
+const supabase: SupabaseClient | null = useSupabase ? createClient(supabaseUrl, supabaseAnonKey) : null;
+
+if (useSupabase) {
+    console.log("Using Supabase for data storage.");
+} else {
+    console.warn("Supabase environment variables not set. Falling back to localStorage. Your data will not be persisted across devices or sessions if you clear your browser data.");
+}
+
+// --- Database Service Functions ---
+
+type PlanForInsert = Omit<SavedPlan, 'id' | 'created_at'>;
+const LOCAL_STORAGE_KEY = 'pilates_strategic_plans';
+
+// Helper to map from Supabase snake_case (plan_data) to app camelCase (planData)
+const fromSupabase = (plan: any): SavedPlan => {
+    if (!plan) return plan;
+    // Supabase returns columns like 'plan_data', we map it to 'planData' for the app
+    const { plan_data, ...rest } = plan;
+    return {
+        ...rest,
+        planData: plan_data,
+    };
+};
+
+// Helper to map from app camelCase (planData) to Supabase snake_case (plan_data)
+const toSupabase = (plan: PlanForInsert | SavedPlan) => {
+    // The app uses 'planData', we map it to 'plan_data' for Supabase
+    const { planData, ...rest } = plan;
+    return {
+        ...rest,
+        plan_data: planData,
+    };
+};
+
+
+export const getSavedPlans = async (): Promise<SavedPlan[]> => {
+    if (supabase) {
+        const { data, error } = await supabase
+            .from('plans')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching plans from Supabase:', error);
+            throw new Error(`Erro ao buscar planos: ${error.message}. Detalhes: ${error.details}`);
+        }
+        return (data || []).map(fromSupabase);
+    } else {
+        // LocalStorage fallback
+        const plansJson = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (plansJson) {
+            try {
+                const plans = JSON.parse(plansJson) as SavedPlan[];
+                return plans.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            } catch (e) {
+                console.error("Error parsing plans from localStorage", e);
+                localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted data
+                return [];
+            }
+        }
+        return [];
+    }
+};
+
+export const savePlan = async (plan: PlanForInsert): Promise<SavedPlan> => {
+    if (supabase) {
+        const supabasePlan = toSupabase(plan);
+        const { data, error } = await supabase
+            .from('plans')
+            .insert([
+                {
+                    plan_data: supabasePlan.plan_data,
+                    report: supabasePlan.report
+                }
+            ])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error saving plan to Supabase:', error);
+            throw new Error(`Erro ao salvar plano: ${error.message}. Detalhes: ${error.details}`);
+        }
+        return fromSupabase(data);
+    } else {
+        // LocalStorage fallback
+        const plans = await getSavedPlans();
+        const newPlan: SavedPlan = {
+            id: crypto.randomUUID(),
+            created_at: new Date().toISOString(),
+            ...plan,
+        };
+        const newPlans = [newPlan, ...plans];
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newPlans));
+        return newPlan;
+    }
+};
+
+export const updatePlan = async (plan: SavedPlan): Promise<SavedPlan> => {
+    if (supabase) {
+        const supabasePlan = toSupabase(plan);
+        const { data, error } = await supabase
+            .from('plans')
+            .update({
+                plan_data: supabasePlan.plan_data,
+                report: supabasePlan.report
+            })
+            .eq('id', plan.id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error updating plan in Supabase:', error);
+            throw new Error(`Erro ao atualizar plano: ${error.message}. Detalhes: ${error.details}`);
+        }
+        return fromSupabase(data);
+    } else {
+        // LocalStorage fallback
+        const plans = await getSavedPlans();
+        const planIndex = plans.findIndex(p => p.id === plan.id);
+        if (planIndex > -1) {
+            const updatedPlans = [...plans];
+            updatedPlans[planIndex] = plan;
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedPlans));
+            return plan;
+        }
+        throw new Error("Plan not found in localStorage for update.");
+    }
+};
+
+export const deletePlan = async (id: string): Promise<void> => {
+    if (supabase) {
+        const { error } = await supabase
+            .from('plans')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error('Error deleting plan from Supabase:', error);
+            throw new Error(`Erro ao excluir plano: ${error.message}. Detalhes: ${error.details}`);
+        }
+    } else {
+        // LocalStorage fallback
+        const plans = await getSavedPlans();
+        const updatedPlans = plans.filter(p => p.id !== id);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedPlans));
+    }
+};
+
+
+// --- Gemini AI Service Functions ---
 
 const formatList = (items: string[]): string => {
     return items.filter(item => item.trim() !== '').map(item => `- ${item}`).join('\n');

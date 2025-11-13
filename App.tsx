@@ -9,6 +9,7 @@ import ActionsStep from './components/steps/ActionsStep';
 import ReviewStep from './components/steps/ReviewStep';
 import GeneratedPlan from './components/steps/GeneratedPlan';
 import { generateFullReport } from './services/geminiService';
+import { getSavedPlans, savePlan, updatePlan, deletePlan } from './services/geminiService';
 import SavedPlansList from './components/steps/SavedPlansList';
 
 const initialPlanData: StrategicPlan = {
@@ -35,31 +36,30 @@ const App: React.FC = () => {
     const [currentStep, setCurrentStep] = useState<Step>(Step.Welcome);
     const [planData, setPlanData] = useState<StrategicPlan>(initialPlanData);
     const [isLoading, setIsLoading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [generatedReport, setGeneratedReport] = useState<string>('');
     const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
     const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
     const [showSavedPlans, setShowSavedPlans] = useState(false);
 
     useEffect(() => {
-        try {
-            const storedPlans = localStorage.getItem('pilates_strategic_plans');
-            if (storedPlans) {
-                setSavedPlans(JSON.parse(storedPlans));
+        const fetchPlans = async () => {
+            setIsLoading(true);
+            try {
+                const plans = await getSavedPlans();
+                setSavedPlans(plans);
+            } catch (error) {
+                console.error("Failed to load plans:", error);
+                const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
+                alert(`Não foi possível carregar os planos salvos.\n\nDetalhes: ${errorMessage}\n\nIsso pode ser devido à falta de uma tabela 'plans' ou a políticas de segurança (RLS) no Supabase. Por favor, verifique a configuração do seu banco de dados.`);
+                setSavedPlans([]);
+            } finally {
+                setIsLoading(false);
             }
-        } catch (error) {
-            console.error("Failed to load plans from localStorage:", error);
-            setSavedPlans([]);
-        }
+        };
+        fetchPlans();
     }, []);
 
-    const updateLocalStorage = (plans: SavedPlan[]) => {
-        try {
-            localStorage.setItem('pilates_strategic_plans', JSON.stringify(plans));
-        } catch (error) {
-            console.error("Failed to save plans to localStorage:", error);
-        }
-    };
-    
     const goToNextStep = () => {
         if (currentStep < Step.GeneratedPlan) {
             setCurrentStep(currentStep + 1);
@@ -94,30 +94,40 @@ const App: React.FC = () => {
         }
     };
 
-    const handleSavePlan = () => {
+    const handleSavePlan = async () => {
         if (!generatedReport) return;
-        
-        const newPlan: SavedPlan = {
-            id: currentPlanId || new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            planData,
-            report: generatedReport,
-        };
 
-        const existingPlanIndex = savedPlans.findIndex(p => p.id === newPlan.id);
-        let updatedPlans;
-
-        if (existingPlanIndex > -1) {
-            updatedPlans = [...savedPlans];
-            updatedPlans[existingPlanIndex] = newPlan;
-        } else {
-            updatedPlans = [newPlan, ...savedPlans];
+        setIsSaving(true);
+        try {
+            if (currentPlanId) {
+                // Update existing plan
+                const planToUpdate: SavedPlan = {
+                    id: currentPlanId,
+                    created_at: savedPlans.find(p => p.id === currentPlanId)?.created_at || new Date().toISOString(),
+                    planData,
+                    report: generatedReport,
+                };
+                const updated = await updatePlan(planToUpdate);
+                setSavedPlans(savedPlans.map(p => (p.id === currentPlanId ? updated : p)));
+            } else {
+                // Save new plan
+                const planToSave = {
+                    planData,
+                    report: generatedReport,
+                };
+                const newPlan = await savePlan(planToSave);
+                setSavedPlans([newPlan, ...savedPlans]);
+                setCurrentPlanId(newPlan.id);
+            }
+        } catch (error) {
+            console.error("Error saving plan:", error);
+            const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
+            alert(`Ocorreu um erro ao salvar o plano. Por favor, tente novamente.\n\nDetalhes: ${errorMessage}`);
+        } finally {
+            setIsSaving(false);
         }
-
-        setSavedPlans(updatedPlans);
-        updateLocalStorage(updatedPlans);
-        setCurrentPlanId(newPlan.id);
     };
+
 
     const handleLoadPlan = (plan: SavedPlan) => {
         setPlanData(plan.planData);
@@ -127,10 +137,20 @@ const App: React.FC = () => {
         setCurrentStep(Step.Vision);
     };
 
-    const handleDeletePlan = (id: string) => {
+    const handleDeletePlan = async (id: string) => {
+        const originalPlans = [...savedPlans];
+        // Optimistic UI update
         const updatedPlans = savedPlans.filter(p => p.id !== id);
         setSavedPlans(updatedPlans);
-        updateLocalStorage(updatedPlans);
+        try {
+            await deletePlan(id);
+        } catch (error) {
+            console.error("Error deleting plan:", error);
+            const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
+            alert(`Ocorreu um erro ao excluir o plano. Por favor, tente novamente.\n\nDetalhes: ${errorMessage}`);
+            // Revert if deletion fails
+            setSavedPlans(originalPlans);
+        }
     };
     
     const updatePlanData = (updates: Partial<StrategicPlan>) => {
@@ -171,6 +191,7 @@ const App: React.FC = () => {
                             onStartOver={startOver}
                             onSave={handleSavePlan}
                             isSaved={!!currentPlanId}
+                            isSaving={isSaving}
                         />;
             default:
                 return <WelcomeStep 

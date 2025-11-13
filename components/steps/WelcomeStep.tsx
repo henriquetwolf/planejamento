@@ -5,10 +5,10 @@ import Button from '../common/Button';
 interface WelcomeStepProps {
     onNext: () => void;
     onShowSavedPlans: () => void;
-    hasSavedPlans: boolean; // Prop mantida para possível uso futuro, mas não mais controla a visibilidade do botão
+    hasSavedPlans: boolean;
 }
 
-const WelcomeStep: React.FC<WelcomeStepProps> = ({ onNext, onShowSavedPlans }) => {
+const WelcomeStep: React.FC<WelcomeStepProps> = ({ onNext, onShowSavedPlans, hasSavedPlans }) => {
     return (
         <div className="animate-fade-in space-y-8">
             <Card className="text-center">
@@ -23,7 +23,13 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ onNext, onShowSavedPlans }) =
                     <Button onClick={onNext} className="w-full sm:w-auto">
                         Criar Novo Plano
                     </Button>
-                    <Button onClick={onShowSavedPlans} variant="secondary" className="w-full sm:w-auto">
+                    <Button 
+                        onClick={onShowSavedPlans} 
+                        variant="secondary" 
+                        className="w-full sm:w-auto"
+                        disabled={!hasSavedPlans}
+                        title={!hasSavedPlans ? "Você ainda não tem planos salvos" : "Ver seus planos guardados"}
+                    >
                         Ver Planos Salvos
                     </Button>
                 </div>

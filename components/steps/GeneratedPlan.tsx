@@ -12,9 +12,10 @@ interface GeneratedPlanProps {
     onStartOver: () => void;
     onSave: () => void;
     isSaved: boolean;
+    isSaving: boolean;
 }
 
-const GeneratedPlan: React.FC<GeneratedPlanProps> = ({ report, planData, onStartOver, onSave, isSaved }) => {
+const GeneratedPlan: React.FC<GeneratedPlanProps> = ({ report, planData, onStartOver, onSave, isSaved, isSaving }) => {
     const [copied, setCopied] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const reportContentRef = useRef<HTMLDivElement>(null);
@@ -137,8 +138,8 @@ const GeneratedPlan: React.FC<GeneratedPlanProps> = ({ report, planData, onStart
             </div>
 
             <div className="mt-8 flex flex-wrap justify-center items-center gap-4">
-                 <Button onClick={onSave} variant="secondary">
-                    {isSaved ? 'Plano Salvo ✓' : 'Salvar Plano'}
+                <Button onClick={onSave} variant="primary" isLoading={isSaving}>
+                    {isSaved ? 'Atualizar Plano Salvo' : 'Salvar Plano'}
                 </Button>
                 <Button onClick={handleDownloadPdf} variant="secondary" isLoading={isDownloading}>
                     {isDownloading ? 'Gerando PDF...' : 'Baixar como PDF'}
@@ -146,8 +147,8 @@ const GeneratedPlan: React.FC<GeneratedPlanProps> = ({ report, planData, onStart
                 <Button onClick={copyToClipboard} variant="ghost">
                     {copied ? 'Copiado!' : 'Copiar Texto'}
                 </Button>
-                <Button onClick={onStartOver}>
-                    Criar um Novo Plano
+                <Button onClick={onStartOver} variant="ghost">
+                    Começar de Novo
                 </Button>
             </div>
             

@@ -41,7 +41,7 @@ export interface StrategicPlan {
 
 export interface SavedPlan {
     id: string;
-    createdAt: string;
+    created_at: string;
     planData: StrategicPlan;
     report: string;
 }
